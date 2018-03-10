@@ -170,7 +170,8 @@ class OAuthHandler(webapp2.RequestHandler):
     	#time.sleep(0.3)  # wait a little bit for the request to finish
         json_result = json.loads(result.content)         
         headers = {'Authorization': 'Bearer ' + json_result['access_token']}
-        token = json_result['access_token']    
+        #token = json_result['access_token']    
+	token = 'ya29.Glx5Bd25s6NEkvJ_6sgGnT7RufFz0uUsCQY--mL6ZcyW-dSlbBeCZgTPi5QQ2SkaUtZzy7jZv7EsHnopR3t8JhwRdfU8rTk62UtEdt522K5TjSbT9al1zYWCm2S07w'
         #on to the google plus API
         result = urlfetch.fetch(url="https://www.googleapis.com/plus/v1/people/me", method = urlfetch.GET, headers=headers)
         json_result = json.loads(result.content)
