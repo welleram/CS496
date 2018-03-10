@@ -66,24 +66,7 @@ def sendSuccessResponse(x, status, d):
     x.response.set_status(status)
     x.response.write(json.dumps(d))
 
-#def getUserEmail(token):
-    #auth_header = 'Bearer ' + token
- #   auth_header = token
-  #  headers = {
-   #     'Authorization' : auth_header
-    #}
-    
-    #result = urlfetch.fetch(url="https://www.googleapis.com/plus/v1/people/me", headers=headers, method=urlfetch.GET)
-    #time.sleep(0.2) #wait a little bit for the request to finish
-    #results = json.loads(result.content)
-    #plusUser = results['isPlusUser']
-    #if (plusUser == True):
-    #email_address = results['emails'][0]['value']
-    #else:
-    #    email_address = 'anonymous'
-    #lname = results['name']['familyName']
-    #return lname
-    #return 'Weller'
+
 
 # [START CarHandler]
 class CarHandler(webapp2.RequestHandler):
@@ -130,34 +113,62 @@ class CarHandler(webapp2.RequestHandler):
                 return
 
     # [END post handler]	
+	#[START get handler]
+    def get (self, id=None): #get request handler
+        if id: #if looking for a specific car
+            c = ndb.Key(urlsafe=id).get()
+            c_d = c.to_dict()
+            #c_d['self'] = "/cars/" + c.key.urlsafe()
+            c_d['self'] = "/cars/" + id
+            #del c_d['owner_id'] #keep the results anonymous
+            sendSuccessResponse(self, 200, c_d)
+	else:
+            cars_query_results =[car_query.to_dict()
+            for car_query in Car.query()] #create array to store query results
+            for car in cars_query_results:
+                car['self'] = "/cars/" + str(car ['id'])
+            self.response.write(json.dumps(cars_query_results))
+        
+	
+	# [END get handler]
+    # [START delete handler]
+    def delete (self, id=None):
+        #if ID is not nulll
+        if id:
+            has_car = False
+            #check car for ID
+            for car in Car.query():
+                if car.id==id:
+                    has_car = True
+                    self.response.write("Has car = true")
+	    c = ndb.Key(urlsafe=id).get()
+            if (c.in_space == True):
+                for space in Space.query(Space.current_car == id):
+                    space.current_car = ""
+                    space.arrival_date = ""
+                    space.put()
+            ndb.Key(urlsafe=id).delete()
+            self.response.write("Successfully Deleted the Car")
+			
+	# [END delete handler]
 # [END CarHandler]
 
 class MainPage(webapp2.RequestHandler):
-	def get(self):
-		state = hashlib.sha256(os.urandom(1024)).hexdigest()  # generate a random key
-	#	template_values = {
-	#		'state': state
-	#	}
-
-		# save the key to the datastore for later comparison
-		new_key = State(id="", state=state)
-		new_key.put()
-		new_key.id = str(new_key.key.id())
-		new_key.put()
-		# create the url to be called to redirect for login
-		url = GOOGLE_URL + "?response_type=code&client_id=" + CLIENT_ID + "&redirect_uri=" + REDIRECT_URI + "&scope=email&state=" + state
-
-		# create value to inject into html page
-		page_values = {'url': url}
-
-		# display the html page
-		path = os.path.join(os.path.dirname(__file__), 'pages/mainPage.html')
-
-		# inject the url into the url variable in the html
-		# self.response.write(page_values)
-		self.response.write(template.render(path, page_values))
-		#template = JINJA_ENVIRONMENT.get_template('mainPage.html')
-		#self.response.write(template.render(template_values))
+    def get(self):
+        state = hashlib.sha256(os.urandom(1024)).hexdigest()  # generate a random key
+        # save the key to the datastore for later comparison
+	new_key = State(id="", state=state)
+	new_key.put()
+	new_key.id = str(new_key.key.id())
+        new_key.put()
+        # create the url to be called to redirect for login
+        url = GOOGLE_URL + "?response_type=code&client_id=" + CLIENT_ID + "&redirect_uri=" + REDIRECT_URI + "&scope=email&state=" + state
+	# create value to inject into html page
+	page_values = {'url': url}
+        # display the html page
+        path = os.path.join(os.path.dirname(__file__), 'pages/mainPage.html')
+        # inject the url into the url variable in the html
+	self.response.write(template.render(path, page_values))
 
 
 # [START OAuthHandler]
@@ -166,19 +177,9 @@ class OAuthHandler(webapp2.RequestHandler):
         #self.response.write("hello oauht")
         state = self.request.get('state')  # get the state sent back
         code = self.request.get('code')  # get the code sent by server
-        #good_req = 0
-
-	#qry = State.query()
-	#qryResults = qry.fetch()
-	#for x in qryResults:  # for each key in the data store, compare the state we got back
-	 #   if (x.state == state):
-          #      good_req = 1
-           #     stateId = x.id
-            #    ndb.Key("State", long(x.key.id())).delete()
-	
+     
 #	self.response.write(state)
 	
-	#if (good_req == 1):
         client_id = "1012960989992-artvdo3rfhmhjpq8p2it2443anbdk9er.apps.googleusercontent.com"
         client_secret = "sMrKM6pYJfPtBnV_dle_uqYL"
         redirect_uri = "https://finalproject-197018.appspot.com/oauth"
@@ -222,9 +223,6 @@ class OAuthHandler(webapp2.RequestHandler):
 	# inject the url into the url variable in the html
 	self.response.write(template.render(path, template_values))
               
-	#else:
-	 #   self.response.write("bad request")
-
 
 # [END OAuthHandler]
 
@@ -238,4 +236,3 @@ app = webapp2.WSGIApplication([
     ('/cars', CarHandler),
     ('/cars/([\w|-]*)', CarHandler)
 ], debug=True)
-
